@@ -3,44 +3,50 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Abhängigkeiten kopieren
-COPY package*.json ./
+# Wir installieren grundlegende Tools (manchmal nötig für Node-Module)
+RUN apk add --no-cache git python3 make g++
 
-# Abhängigkeiten installieren
-RUN npm ci
-
-# Den restlichen Code kopieren
+# Kopiere das ganze Repo in den Container
 COPY . .
 
-# Umgebungsvariablen für den Build (verhindert manche Vite-Warnungen)
-ENV NODE_ENV=production
+# --- HIER IST DER FIX ---
+# Statt "npm run build" im Root aufzurufen, gehen wir direkt ins Frontend.
+# Das verhindert den "Command not found" (127) Fehler.
 
-# Bauen (Dies erstellt /app/frontend/dist)
+WORKDIR /app/frontend
+# Installiere Frontend-Abhängigkeiten
+RUN npm install
+# Baue das Frontend (Erstellt den dist Ordner)
 RUN npm run build
+
+# Zurück zum Hauptverzeichnis für den Rest
+WORKDIR /app
 
 # 2. Laufzeit-Phase (Runner)
 FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Wir brauchen python3 für manche Backend-Skripte (falls nötig), sicherheitshalber installieren
+# Auch im Runner brauchen wir evtl. Python für das Backend-Skript
 RUN apk add --no-cache python3 make g++
 
-# Kopiere package.json und installiere nur Production-Deps
+# Kopiere die Root-Package-Dateien
 COPY package*.json ./
-RUN npm ci --omit=dev
 
-# --- HIER WAR DER FEHLER ---
-# Wir kopieren den gebauten 'dist' Ordner aus dem frontend-Unterverzeichnis
-# an die gleiche Stelle im neuen Container
+# Installiere die Root-Abhängigkeiten (für das Backend-Start-Skript)
+RUN npm install --omit=dev
+
+# Kopiere das Backend
+COPY backend ./backend
+
+# Kopiere das fertig gebaute Frontend aus der Builder-Phase
+# (Der Pfad ist jetzt sicher /app/frontend/dist)
 COPY --from=builder /app/frontend/dist ./frontend/dist
-# ---------------------------
 
-# Kopiere den Backend-Code und den Rest (damit der Server läuft)
-COPY --from=builder /app/backend ./backend
-COPY --from=builder /app/frontend ./frontend
+# Kopiere den Rest des Frontends (manchmal braucht der Server Files von dort)
+COPY --from=builder /app/frontend/package.json ./frontend/package.json
 
-# WICHTIG: Das Start-Skript ausführbar machen
+# WICHTIG: Mache das Start-Skript ausführbar
 RUN chmod +x ./backend/scripts/run.sh
 
 ENV NODE_ENV=production
