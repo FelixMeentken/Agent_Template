@@ -12,6 +12,9 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from fastapi.staticfiles import StaticFiles
+import os
+
 DEFAULT_CHATKIT_BASE = "https://api.openai.com"
 SESSION_COOKIE_NAME = "chatkit_session_id"
 SESSION_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 30  # 30 days
@@ -164,3 +167,14 @@ def parse_json(response: httpx.Response) -> Mapping[str, Any]:
         return parsed if isinstance(parsed, Mapping) else {}
     except (json.JSONDecodeError, httpx.DecodingError):
         return {}
+
+# --- FIX FÜR DOCKER DEPLOYMENT ---
+# Prüfen, ob der Frontend-Ordner im Container existiert
+# (Wir haben ihn im Dockerfile nach /app/frontend/dist kopiert)
+frontend_path = "/app/frontend/dist"
+
+if os.path.exists(frontend_path):
+    # API-Routen haben Vorrang, der Rest geht ans Frontend
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+else:
+    print(f"WARNUNG: Frontend Pfad {frontend_path} nicht gefunden!")
