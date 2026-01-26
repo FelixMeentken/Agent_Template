@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "concurrently --kill-others-on-fail --names backend,frontend \"npm run backend\" \"npm run frontend\"",
+    "build": "npm run frontend:build",
+    "start": "npm run backend",
     "frontend": "npm --prefix frontend install && npm --prefix frontend run dev",
     "frontend:build": "npm --prefix frontend install && npm --prefix frontend run build",
     "frontend:lint": "npm --prefix frontend install && npm --prefix frontend run lint",
@@ -12,4 +14,3 @@
     "concurrently": "^9.1.2"
   }
 }
-
