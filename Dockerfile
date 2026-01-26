@@ -33,5 +33,8 @@ ENV PORT=3000
 # Port freigeben
 EXPOSE 3000
 
+# WICHTIG: Das Start-Skript ausführbar machen
+RUN chmod +x ./backend/scripts/run.sh
+
 # Startbefehl (Startet den Node-Server, der Frontend & API bedient)
 CMD ["npm", "run", "start"]
