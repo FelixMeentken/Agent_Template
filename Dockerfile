@@ -46,7 +46,12 @@ COPY --from=builder /app/frontend/dist ./frontend/dist
 # Kopiere den Rest des Frontends (manchmal braucht der Server Files von dort)
 COPY --from=builder /app/frontend/package.json ./frontend/package.json
 
-# WICHTIG: Mache das Start-Skript ausführbar
+# --- HIER IST DIE REPARATUR ---
+# 1. Wir installieren 'sed' (falls nicht da) und reparieren die Datei
+# Der Befehl entfernt das unsichtbare '\r' Zeichen aus Windows-Dateien
+RUN sed -i 's/\r$//' ./backend/scripts/run.sh
+
+# 2. Jetzt machen wir sie ausführbar
 RUN chmod +x ./backend/scripts/run.sh
 
 ENV NODE_ENV=production
