@@ -1,40 +1,51 @@
 # 1. Bau-Phase (Builder)
 FROM node:18-alpine AS builder
 
-# Arbeitsverzeichnis im Container erstellen
 WORKDIR /app
 
-# Abhängigkeiten installieren
+# Abhängigkeiten kopieren
 COPY package*.json ./
+
+# Abhängigkeiten installieren
 RUN npm ci
 
-# Den Rest des Codes kopieren
+# Den restlichen Code kopieren
 COPY . .
 
-# Die App bauen (Frontend -> statische Dateien, Backend vorbereiten)
+# Umgebungsvariablen für den Build (verhindert manche Vite-Warnungen)
+ENV NODE_ENV=production
+
+# Bauen (Dies erstellt /app/frontend/dist)
 RUN npm run build
 
-# 2. Laufzeit-Phase (Runner) - Das macht das Image klein und sicher
+# 2. Laufzeit-Phase (Runner)
 FROM node:18-alpine AS runner
 
 WORKDIR /app
 
-# Wir kopieren nur das Nötigste aus der Bau-Phase
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/dist ./dist
-# Falls es einen separaten Backend-Ordner oder server.js gibt, wird er meist durch den Build verarbeitet
-# oder ist im Root. Bei managed-chatkit ist oft ein "server"-File wichtig.
-# Wir kopieren zur Sicherheit alles Gebaute.
+# Wir brauchen python3 für manche Backend-Skripte (falls nötig), sicherheitshalber installieren
+RUN apk add --no-cache python3 make g++
 
-ENV NODE_ENV=production
-ENV PORT=3000
+# Kopiere package.json und installiere nur Production-Deps
+COPY package*.json ./
+RUN npm ci --omit=dev
 
-# Port freigeben
-EXPOSE 3000
+# --- HIER WAR DER FEHLER ---
+# Wir kopieren den gebauten 'dist' Ordner aus dem frontend-Unterverzeichnis
+# an die gleiche Stelle im neuen Container
+COPY --from=builder /app/frontend/dist ./frontend/dist
+# ---------------------------
+
+# Kopiere den Backend-Code und den Rest (damit der Server läuft)
+COPY --from=builder /app/backend ./backend
+COPY --from=builder /app/frontend ./frontend
 
 # WICHTIG: Das Start-Skript ausführbar machen
 RUN chmod +x ./backend/scripts/run.sh
 
-# Startbefehl (Startet den Node-Server, der Frontend & API bedient)
+ENV NODE_ENV=production
+ENV PORT=3000
+EXPOSE 3000
+
+# Startbefehl
 CMD ["npm", "run", "start"]
