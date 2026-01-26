@@ -5,16 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgentKit demo</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-     <script>
-  // Polyfill für crypto.randomUUID in unsicheren Contexten (HTTP)
-  if (!crypto.randomUUID) {
-    crypto.randomUUID = () => {
-      return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, c =>
-        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-      );
-    };
-  }
-</script>
     <script src="https://cdn.platform.openai.com/deployments/chatkit/chatkit.js"></script>
   </head>
   <body>
@@ -22,6 +12,7 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
 
 
 
